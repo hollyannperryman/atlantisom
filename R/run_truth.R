@@ -16,6 +16,8 @@
 #' @family run functions
 #' @author Sean Lucey, Kelli Faye Johnson
 #'
+#' HAP - 2024 - The following script was edited by Holly Ann Perryman to get updated CalCurr and SAR SS files to run
+#'
 #' @template scenario
 #' @template dir
 #' @template file_fgs
@@ -44,9 +46,18 @@
 #' str(truth)
 #' rm(truth)
 #'
-run_truth <- function(scenario, dir = getwd(),
-  file_fgs, file_bgm, select_groups, file_init, file_biolprm, file_runprm,
-  file_fish, verbose = FALSE, save = TRUE, annage = FALSE){
+run_truth <- function(scenario,
+                      dir = getwd(),
+                      file_fgs,
+                      file_bgm,
+                      select_groups,
+                      file_init,
+                      file_biolprm,
+                      file_runprm,
+                      file_fish,
+                      verbose = FALSE,
+                      save = TRUE,
+                      annage = FALSE){
 
   # Read in information
   # Read in the functional groups csv since that is used by many functions
@@ -55,41 +66,56 @@ run_truth <- function(scenario, dir = getwd(),
   bps <- load_bps(dir = dir, fgs = file_fgs, file_init = file_init)
   # Read in the biological parameters
   biol <- load_biolprm(dir = dir, file_biolprm = file_biolprm)
+  #* HAP - there is a warnings caused by load_biolprm(). Does not appear to be any errors but may want to consider revising load_biolprm?
+  # Warning messages:
+  # 1: In `[<-.data.frame`(`*tmp*`, , 3:(maxmat + 2), value = list(`1` = c("0.1",  :
+  #   provided 13 variables to replace 10 variables
+  # 2: In load_biolprm(dir = dir, file_biolprm = file_biolprm) :
+  #   NAs introduced by coercion
   # Read in the run parameters
   runprm <- load_runprm(dir = dir, file_runprm = file_runprm)
 
-  nc_catch <- paste0(scenario, 'CATCH.nc')
-  dietcheck <- paste0(scenario, 'DietCheck.txt')
-  nc_out <- paste0(scenario, ".nc")
-  nc_prod <- paste0(scenario, "PROD.nc")
-  file_catchfish <- file.path(dir,
-    paste0(scenario, "CatchPerFishery.txt"))
-  file_catch <- paste0(scenario, "Catch.txt")
-
+  # Load output data
+  #
+  # HAP - revised the way the data is loaded, removing the need for scenario here
+  #
+  # nc_catch <- paste0(scenario, 'CATCH.nc')
+  # dietcheck <- paste0(scenario, 'DietCheck.txt')
+  # nc_out <- paste0(scenario, ".nc")
+  # nc_prod <- paste0(scenario, "PROD.nc")
+  # file_catchfish <- file.path(dir, paste0(scenario, "CatchPerFishery.txt"))
+  # file_catch <- paste0(scenario, "Catch.txt")
+  nc_catch       <- list.files(path = dir, pattern = "CATCH.nc")[1]
+  dietcheck      <- list.files(path = dir, pattern = "DietCheck.txt")[1]
+  nc_out         <- list.files(path = dir, pattern = "\\.nc$", full.names = FALSE)[!(list.files(path = dir, pattern = "\\.nc$", full.names = FALSE) %in% file_init)][1]
+  nc_prod        <- list.files(path = dir, pattern = "PROD.nc")[1]
+  file_catchfish <- list.files(path = dir, pattern = "CatchPerFishery.txt")[1]
+  file_catch     <- list.files(path = dir, pattern = "Catch.txt")[1]
   if(annage){
-    if(!file.exists(paste0(file.path(dir,paste0(scenario, 'ANNAGEBIO.nc'))))){
-      stop("ANNAGEBIO.nc file not found")
-    }
-    if(!file.exists(paste0(file.path(dir,paste0(scenario, 'ANNAGECATCH.nc'))))){
-      stop("ANNAGECATCH.nc file not found")
-    }
-    nc_annagebio <- paste0(scenario, 'ANNAGEBIO.nc')
-    nc_annagecatch <- paste0(scenario, 'ANNAGECATCH.nc')
+    if(!file.exists(list.files(path = dir, pattern = "ANNAGEBIO.nc")[1])){ # paste0(file.path(dir,paste0(scenario, 'ANNAGEBIO.nc')))))
+      stop("ANNAGEBIO.nc file not found")}
+    if(!file.exists(list.files(path = dir, pattern = "ANNAGECATCH.nc")[1])){ #paste0(file.path(dir,paste0(scenario, 'ANNAGECATCH.nc')))))
+      stop("ANNAGECATCH.nc file not found")}
+    # nc_annagebio   <- paste0(scenario, 'ANNAGEBIO.nc')
+    # nc_annagecatch <- paste0(scenario, 'ANNAGECATCH.nc')
+    nc_annagebio   <- list.files(path = dir, pattern = "ANNAGEBIO.nc")[1]
+    nc_annagecatch <- list.files(path = dir, pattern = "ANNAGECATCH.nc")[1]
   }
 
   # Get the boundary boxes
-  allboxes <- load_box(dir = dir, file_bgm = file_bgm)
+  allboxes <- load_box(dir = dir,
+                       file_bgm = file_bgm)
   boxes <- get_boundary(allboxes)
 
   # Get box area for benthic biomass pool calc
   area <- load_boxarea(dir = dir,
                        file_bgm = file_bgm)
 
-
   #Extract from NetCDF files
   # Need: dir, file_nc, bps, fgs, select_groups, select_variable,
   # check_acronyms, bboxes
 
+  # get nums data for function output
   nums <- load_nc(dir = dir,
                   file_nc = nc_out,
                   bps = bps,
@@ -100,6 +126,7 @@ run_truth <- function(scenario, dir = getwd(),
                   bboxes = boxes)
   if(verbose) message("Numbers read in.")
 
+  # get resn data for function output
   resn <- load_nc(dir = dir,
                   file_nc = nc_out,
                   bps = bps,
@@ -110,6 +137,7 @@ run_truth <- function(scenario, dir = getwd(),
                   bboxes = boxes)
   if(verbose) message("Reserve nitrogen read in.")
 
+  # get structn data for function output
   structn <- load_nc(dir = dir,
                   file_nc = nc_out,
                   bps = bps,
@@ -120,61 +148,20 @@ run_truth <- function(scenario, dir = getwd(),
                   bboxes = boxes)
   if(verbose) message("Structural nitrogen read in.")
 
-  eat <- load_nc(dir = dir,
-                     file_nc = nc_prod,
-                     bps = bps,
-                     fgs = fgs,
-                     select_groups = select_groups,
-                     select_variable = "Eat",
-                     check_acronyms = TRUE,
-                     bboxes = boxes)
-  if(verbose) message("Eaten read in.")
-
-  grazing <- load_nc(dir = dir,
-                 file_nc = nc_prod,
-                 bps = bps,
-                 fgs = fgs,
-                 select_groups = select_groups,
-                 select_variable = "Grazing",
-                 check_acronyms = TRUE,
-                 bboxes = boxes)
-  if(verbose) message("Grazing read in.")
-
-  vol <- load_nc_physics(dir = dir,
-                         file_nc = nc_out,
-                         physic_variables = "volume",
-                         aggregate_layers = FALSE,
-                         bboxes = boxes)
-  if(verbose) message("Volume read in.")
-
-  # biomass pools added 2023 for Rpath testing
-  pools <- fgs %>%
-    dplyr::filter(NumCohorts == 1,
-                  IsTurnedOn == 1) %>%
-    dplyr::select(Name) %>%
-    .$Name
-
-  pooln <- load_nc(dir = dir,
-                   file_nc = nc_out,
+  # get catch data for function output, also needed for other parts of this function
+  catch <- load_nc(dir = dir,
+                   file_nc = nc_catch,
                    bps = bps,
                    fgs = fgs,
-                   select_groups = pools,
-                   select_variable = "N",
+                   select_groups = select_groups,
+                   select_variable = "Catch",
                    check_acronyms = TRUE,
                    bboxes = boxes)
-  if(verbose) message("Biomass pools N read in.")
-
-
-  catch <- load_nc(dir = dir,
-                 file_nc = nc_catch,
-                 bps = bps,
-                 fgs = fgs,
-                 select_groups = select_groups,
-                 select_variable = "Catch",
-                 check_acronyms = TRUE,
-                 bboxes = boxes)
   if(verbose) message("Catch in numbers at agecl read in.")
 
+  #* HAP - had to revise the load_nc_catchtons --- source("R/load_nc_catchtons.R")
+
+  # get catchtons data for function output
   catchtons <- load_nc_catchtons(dir = dir,
                                  file_nc = nc_catch,
                                  file_fish = file_fish,
@@ -187,19 +174,20 @@ run_truth <- function(scenario, dir = getwd(),
   )
   if(verbose) message("Catch tons by fleet read in.")
 
+  # get disctons data for function output
   disctons <- load_nc_catchtons(dir = dir,
-                                 file_nc = nc_catch,
-                                 file_fish = file_fish,
-                                 bps = bps,
-                                 fgs = fgs,
-                                 select_groups = select_groups,
-                                 select_variable = "Discard",
-                                 check_acronyms = TRUE,
-                                 bboxes = boxes
+                                file_nc = nc_catch,
+                                file_fish = file_fish,
+                                bps = bps,
+                                fgs = fgs,
+                                select_groups = select_groups,
+                                select_variable = "Discard",
+                                check_acronyms = TRUE,
+                                bboxes = boxes
   )
   if(verbose) message("Discard tons by fleet read in.")
 
-
+  # EXTRA -
   if(annage){
     numsage <- load_nc_annage(dir = dir,
                               file_nc = nc_annagebio,
@@ -324,6 +312,8 @@ run_truth <- function(scenario, dir = getwd(),
   # catch_all$time <- catch_all$time / runprm$toutfinc
   # if(verbose) message("Catch for all fisheries in biomass read in.")
 
+  #* HAP - load_diet_comp() did not run for me due to mismatched column names in groups.csv, hence
+  #* why the script_atlantisom_ex has a section of code fixing adjusting groups.csv column names
   diet <- load_diet_comp(dir = dir, file_diet = dietcheck, fgs = fgs)
   diet <- diet[diet$atoutput>0,]
   if(verbose) message("Global diet composition (proportion) read in.")
@@ -335,19 +325,82 @@ run_truth <- function(scenario, dir = getwd(),
   # catchbio <- calc_biomass_age(nums = catch,
   #   resn = resn, structn = structn, biolprm = biol)
 
+  # get biomass_eaten data for function output
+  # first, need to get eat, grazing and vol
+  # get eat data, NOT function output - needed for calc_pred_cons()
+  eat <- load_nc(dir = dir,
+                 file_nc = nc_prod,
+                 bps = bps,
+                 fgs = fgs,
+                 select_groups = select_groups,
+                 select_variable = "Eat",
+                 check_acronyms = TRUE,
+                 bboxes = boxes)
+  if(verbose) message("Eaten read in.")
+  # get grazing data, NOT function output - needed for calc_pred_cons()
+  grazing <- load_nc(dir = dir,
+                     file_nc = nc_prod,
+                     bps = bps,
+                     fgs = fgs,
+                     select_groups = select_groups,
+                     select_variable = "Grazing",
+                     check_acronyms = TRUE,
+                     bboxes = boxes)
+  if(verbose) message("Grazing read in.")
+  # get vol data, NOT function ouput - needed for calc_pred_cons() and calc_biomass_pool()
+  vol <- load_nc_physics(dir = dir,
+                         file_nc = nc_out,
+                         physic_variables = "volume",
+                         aggregate_layers = FALSE,
+                         bboxes = boxes)
+  if(verbose) message("Volume read in.")
+
+  # get biomass_eaten data for function output
   biomass_eaten <- calc_pred_cons(eat = eat,
-     grazing = grazing, vol = vol, biolprm = biol,
-     runprm = runprm)
+                                  grazing = grazing,
+                                  vol = vol,
+                                  biolprm = biol,
+                                  runprm = runprm)
 
-  biomass_ages <- calc_biomass_age(nums = nums,
-    resn = resn, structn = structn, biolprm = biol)
+  # get biomass for age class groups for function output
+  #* HAP - the calc_biomass_age function was breaking my R:
+  # biomass_ages <- calc_biomass_age(nums = nums,
+  #                                  resn = resn,
+  #                                  structn = structn,
+  #                                  biolprm = biol)
+  #* thus, instead, I am using a different function based on script from the ReactiveAtlantis R package --- source("calc_bio_age.R")
+  biomass_ages <- calc_bio_age(fgs         = fgs[which(fgs[,5] %in% select_groups),], # HAP, warning, this setup may break for others if their column order of groups.csv file is different...
+                               nc_out_path = file.path(dir, nc_out),
+                               bboxes      = boxes)
 
-  # added 2023 for Rpath testing
-  biomass_pools <- calc_biomass_pool(pooln = pooln,
-                                     vol = vol,
-                                     area = area,
-                                     fgs = fgs,
-                                     biolprm = biol)
+  # get biomass for pool groups for function output
+  # biomass pools added 2023 for Rpath testing
+  #* HAP - reorganized this code - but did not really test as my group of focus was not a pool group...
+  pools <- fgs %>%
+    dplyr::filter(NumCohorts == 1,
+                  IsTurnedOn == 1) %>%
+    dplyr::select(Name) %>%
+    .$Name
+  pools <- pools[which(pools %in% select_groups)] # HAP, drop the groups that are not selected
+  if (length(pools)>0) {
+    pooln <- load_nc(dir = dir,
+                     file_nc = nc_out,
+                     bps = bps,
+                     fgs = fgs,
+                     select_groups = pools,
+                     select_variable = "N",
+                     check_acronyms = TRUE,
+                     bboxes = boxes)
+    if(verbose) message("Biomass pools N read in.")
+    # added 2023 for Rpath testing
+    biomass_pools <- calc_biomass_pool(pooln  = pooln,
+                                       vol     = vol,
+                                       area    = area,
+                                       fgs     = fgs,
+                                       biolprm = biol); head(biomass_pools)
+  } else {
+    biomass_pools <- NA
+  }
 
   # bio_catch <- calc_biomass_age(nums = catch,
   #   resn = resn, structn = structn, biolprm = biol)
@@ -413,12 +466,8 @@ run_truth <- function(scenario, dir = getwd(),
                    "biolprm" = biol,
                    "fgs" = fgs)
   }
-
   if(verbose) message("Start writing to HDD.")
-  if(save) {
-    save(result,
-      file = file.path(dir, paste0(scenario, "run_truth.RData")))
-  }
-
-  invisible(result)
+  #*HAP - slightly revised
+  if(save) { save(result,file = file.path(dir, paste0(scenario, "_run_truth.RData"))) }
+  return(result) # HAP - invisible(result) did not run for me
 }
